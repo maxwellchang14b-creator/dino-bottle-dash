@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dino Bottle Dash</title>
+<style>
+:root{--ink:#29382b;--paper:#f8f6e9;--sage:#e7ebd9;--muted:#748363}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:#edf0e3;color:var(--ink);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;display:flex;min-height:100vh;align-items:center;justify-content:center}
+main{width:min(900px,100%);border:2px solid var(--ink);border-radius:16px;overflow:hidden;background:var(--paper);box-shadow:8px 8px 0 #cbd3bc}
+header{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:16px 20px;background:var(--sage);border-bottom:2px solid var(--ink)}
+h1{font-size:clamp(16px,3vw,24px);margin:0;letter-spacing:1px} .sub{font-size:11px;margin-top:6px;color:#65715b}
+.stats{text-align:right;font-size:13px;font-weight:800;line-height:1.8;white-space:nowrap}
+canvas{display:block;width:100%;height:auto;touch-action:manipulation;cursor:pointer}
+.controls{padding:14px 18px 18px}
+button{background:var(--ink);color:white;border:0;border-radius:8px;padding:12px 17px;font:700 13px inherit;font-family:inherit;cursor:pointer}
+button:hover{background:#52664b}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.hint{font-size:11px;line-height:1.7;color:#65715b;margin-top:10px}
+.legend{font-size:11px;display:flex;gap:15px;flex-wrap:wrap}
+@media(max-width:520px){body{padding:8px}header{padding:12px}.stats{font-size:11px}.controls{padding:12px}}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div><h1>🦖 DINO BOTTLE DASH</h1><div class="sub">OFFLINE MODE: ABSOLUTE BOTTLE NONSENSE</div></div>
+  <div class="stats">SCORE <span id="score">00000</span><br>ROOT BEERS <span id="bottles">0</span></div>
+</header>
+<canvas id="game" width="800" height="300" aria-label="Dinosaur runner game. Jump over fancy grape juice goblets and collect root beer bottles."></canvas>
+<section class="controls">
+  <div class="row"><button id="start">▶ START GAME</button><span class="hint" style="margin:0">SPACE / ↑ / W / TAP = JUMP</span></div>
+  <div class="legend" style="margin-top:12px"><span>🟤 Collect root beer: +25</span><span>🍇 Dodge fancy grape-juice goblets!</span></div>
+  <div id="message" class="hint">Collect the root beer. Avoid the fancy goblets. Maintain your dignity.</div>
+</section>
+</main>
+<script>
+(() => {
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const scoreEl=document.getElementById('score'),bottleEl=document.getElementById('bottles'),button=document.getElementById('start'),message=document.getElementById('message');
+const W=800,H=300,floor=238;
+let state='ready',last=0,time=0,score=0,bottles=0,speed=320,obstacleTimer=320,pickupTimer=200,items=[],particles=[];
+const d={x:88,y:floor-45,w:42,h:45,vy:0,jump:false};
+let clouds=[{x:110,y:52,w:54},{x:390,y:80,w:40},{x:680,y:46,w:58}];
+function reset(){time=0;score=0;bottles=0;speed=320;obstacleTimer=380;pickupTimer=220;items=[];particles=[];d.y=floor-d.h;d.vy=0;d.jump=false;updateStats()}
+function updateStats(){scoreEl.textContent=String(Math.floor(score)).padStart(5,'0');bottleEl.textContent=bottles}
+function start(){reset();state='run';button.textContent='↻ RESTART';message.textContent='The goblets are fancy. Your jumping skills should be fancier.';last=performance.now()}
+function jump(){if(state!=='run'){start();return}if(!d.jump){d.vy=-590;d.jump=true}}
+button.addEventListener('click',start);
+canvas.addEventListener('pointerdown',e=>{e.preventDefault();jump()});
+window.addEventListener('keydown',e=>{if(['Space','ArrowUp','KeyW'].includes(e.code)){e.preventDefault();if(!e.repeat)jump()}});
+function rect(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),w,h)}
+function label(t,x,y,size,color,align='left'){ctx.font=`bold ${size}px ui-monospace,monospace`;ctx.textAlign=align;ctx.fillStyle=color;ctx.fillText(t,x,y)}
+function cloud(c){rect(c.x,c.y+8,c.w,12,'#e2e7d6');rect(c.x+10,c.y,c.w*.43,16,'#e2e7d6');rect(c.x+c.w*.48,c.y+4,c.w*.3,12,'#e2e7d6')}
+function dinosaur(){let x=d.x,y=d.y,k='#344534',s='#71875b';rect(x+3,y+13,25,27,k);rect(x+18,y+3,21,23,k);rect(x+31,y+10,15,10,k);rect(x+34,y+6,4,4,'#fff');rect(x+36,y+7,2,2,'#1d261e');rect(x+7,y+19,5,5,s);rect(x+25,y+18,7,3,'#d7dfba');if(d.jump){rect(x+7,y+37,8,7,k);rect(x+25,y+36,8,8,k)}else{let n=Math.floor(time*14)%2;rect(x+7,y+37,8,n?8:4,k);rect(x+25,y+37,8,n?4:8,k)}rect(x-7,y+24,13,6,k);rect(x-10,y+22,7,6,k)}
+function rootBeer(x,y){
+ctx.save();ctx.translate(Math.round(x),Math.round(y));
+rect(9,0,8,5,'#a8a18a');rect(7,5,12,5,'#b67a45');rect(4,10,18,24,'#82512f');rect(6,34,14,4,'#704327');rect(6,16,14,11,'#e5d19a');label('RB',13,24,7,'#3e3526','center');rect(7,30,12,2,'#c48d4e');ctx.restore()
+}
+function goblet(x,y){
+ctx.save();ctx.translate(Math.round(x),Math.round(y));
+const glass='#a9a9c5',edge='#6e668b',wine='#765080',shine='#e7dcf0',gold='#c6a76a';
+// ornate rim and broad bowl, filled with grape juice
+ctx.fillStyle=glass;ctx.strokeStyle=edge;ctx.lineWidth=2;
+ctx.beginPath();ctx.moveTo(3,2);ctx.quadraticCurveTo(12,5,23,2);ctx.lineTo(21,9);ctx.quadraticCurveTo(21,21,13,27);ctx.lineTo(13,31);ctx.lineTo(17,34);ctx.lineTo(20,36);ctx.lineTo(20,38);ctx.lineTo(5,38);ctx.lineTo(5,36);ctx.lineTo(9,34);ctx.lineTo(12,31);ctx.lineTo(12,27);ctx.quadraticCurveTo(4,21,4,9);ctx.closePath();ctx.fill();ctx.stroke();
+// juice inside bowl
+ctx.fillStyle=wine;ctx.beginPath();ctx.moveTo(5,11);ctx.quadraticCurveTo(13,13,21,11);ctx.quadraticCurveTo(20,21,13,25);ctx.quadraticCurveTo(6,21,5,11);ctx.fill();
+// fancy gold rim and stem details
+ctx.strokeStyle=gold;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(4,4);ctx.quadraticCurveTo(13,7,22,4);ctx.stroke();ctx.beginPath();ctx.moveTo(13,29);ctx.lineTo(13,34);ctx.stroke();ctx.beginPath();ctx.ellipse(12.5,37,9,2,0,0,Math.PI*2);ctx.stroke();
+ctx.strokeStyle=shine;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(7,10);ctx.quadraticCurveTo(8,17,11,19);ctx.stroke();
+ctx.restore()
+}
+function spawnObstacle(){items.push({x:W+20,y:floor-40,w:27,h:40,type:'goblet'});obstacleTimer=260+Math.random()*210}
+function spawnPickup(){items.push({x:W+20,y:floor-72-Math.random()*32,w:25,h:38,type:'root',taken:false});pickupTimer=260+Math.random()*210}
+function hit(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
+function gameOver(){state='over';button.textContent='↻ PLAY AGAIN';message.textContent=`GOBLETED! Score: ${Math.floor(score)} · Root beers collected: ${bottles}. Run it back.`}
+function update(dt){if(state!=='run')return;time+=dt;speed=Math.min(690,320+time*8);score+=dt*10;d.vy+=1600*dt;d.y+=d.vy*dt;if(d.y>=floor-d.h){d.y=floor-d.h;d.vy=0;d.jump=false}
+obstacleTimer-=speed*dt;pickupTimer-=speed*dt;if(obstacleTimer<=0)spawnObstacle();if(pickupTimer<=0)spawnPickup();
+for(let i=items.length-1;i>=0;i--){let a=items[i];a.x-=speed*dt;if(a.type==='root'&&!a.taken&&hit({x:d.x+4,y:d.y+5,w:32,h:35},{x:a.x+4,y:a.y+2,w:17,h:35})){a.taken=true;bottles++;score+=25;for(let j=0;j<8;j++)particles.push({x:a.x+12,y:a.y+15,vx:(Math.random()-.5)*130,vy:-Math.random()*120,life:.55})}
+if(a.type==='goblet'&&hit({x:d.x+5,y:d.y+5,w:32,h:37},{x:a.x+3,y:a.y+2,w:21,h:37})){gameOver()}
+if(a.x<-45||a.taken)items.splice(i,1)}
+particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt});particles=particles.filter(p=>p.life>0);clouds.forEach(c=>{c.x-=speed*.07*dt;if(c.x<-80)c.x=W+40});updateStats()}
+function draw(){ctx.clearRect(0,0,W,H);rect(0,0,W,H,'#f8f6e9');clouds.forEach(cloud);label('FANCY JUICE ZONE',W-18,25,10,'#a0a78e','right');rect(0,floor,W,H-floor,'#e7ebd9');rect(0,floor,W,3,'#344534');for(let i=0;i<18;i++){let x=((i*61-time*speed*.65)%W+W)%W;rect(x,floor+18,19,2,'#b9c6a6');rect(x+17,floor+30,3,3,'#b9c6a6')}
+items.forEach(a=>a.type==='root'?rootBeer(a.x,a.y):goblet(a.x,a.y));dinosaur();particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*2);rect(p.x,p.y,4,4,'#b67a45');ctx.globalAlpha=1});
+if(state!=='run'){rect(0,0,W,H,'rgba(248,246,233,.56)');rect(135,78,530,112,'#f8f6e9');rect(135,78,530,3,'#344534');rect(135,187,530,3,'#344534');if(state==='ready'){label('DINO BOTTLE DASH',W/2,114,25,'#344534','center');label('JUMP. COLLECT. DODGE THE GOBLETS.',W/2,140,12,'#71875b','center');label('PRESS START TO PLAY',W/2,166,12,'#344534','center')}else{label('GOBLETED!',W/2,114,26,'#765080','center');label(`SCORE ${Math.floor(score)}  |  ROOT BEERS ${bottles}`,W/2,141,13,'#344534','center');label('PRESS PLAY AGAIN TO RETRY',W/2,166,12,'#71875b','center')}}
+}
+function frame(now){let dt=Math.min((now-(last||now))/1000,.04);last=now;update(dt);draw();requestAnimationFrame(frame)}
+draw();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
